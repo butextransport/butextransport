@@ -1,0 +1,2180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <title>BUTEX Transit - Bus Ticket Management</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { font-family: Inter, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+    .display { font-family: Manrope, Inter, sans-serif; letter-spacing: -0.025em; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(850px 520px at 100% -10%, rgba(20,184,166,0.18), transparent 60%),
+        radial-gradient(760px 500px at -15% 105%, rgba(245,158,11,0.14), transparent 60%),
+        linear-gradient(180deg, #f8fffd 0%, #fffaf0 100%);
+    }
+    .shell { max-width: 430px; min-height: 100vh; margin: 0 auto; background: rgba(255,255,255,0.76); box-shadow: 0 0 110px rgba(15,118,110,0.12); }
+    .card { background: #fff; border: 1px solid rgba(15,118,110,0.12); border-radius: 22px; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 14px 32px -22px rgba(15,118,110,0.24); }
+    .field { background: #f8fafc; border: 1px solid #e2e8f0; outline: none; transition: all 0.2s ease; }
+    .field:focus { background: #fff; border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,0.12); }
+    
+    /* Modern select styling */
+    select.field {
+      appearance: none;
+      background-color: #f8fafc;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-position: right 12px center;
+      background-size: 18px;
+      background-repeat: no-repeat;
+      cursor: pointer;
+      padding-right: 40px !important;
+    }
+    
+    select.field.pl-9 {
+      background-position: right 12px center;
+    }
+    
+    select.field:hover {
+      background-color: #f0fdfa;
+      border-color: #99f6e4;
+    }
+    
+    select.field:focus {
+      background-color: #ffffff;
+      border-color: #0f766e;
+      box-shadow: 0 0 0 3px rgba(15,118,110,0.15), 0 4px 12px -4px rgba(15,118,110,0.1);
+    }
+    
+    /* Modern dropdown option styling */
+    select.field option {
+      background: #ffffff;
+      color: #0f172a;
+      padding: 12px 16px;
+      font-weight: 500;
+      font-size: 13px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    
+    select.field option:first-of-type {
+      color: #94a3b8;
+      font-style: italic;
+    }
+    
+    select.field option:checked {
+      background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+      color: white;
+      font-weight: 700;
+    }
+    
+    select.field option:hover {
+      background-color: #f0fdfa;
+    }
+    
+    /* Modern select wrapper */
+    .select-wrapper {
+      position: relative;
+    }
+    
+    .select-wrapper::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #0f766e, #14b8a6, #0f766e);
+      transition: all 0.3s ease;
+      transform: translateX(-50%);
+      border-radius: 2px;
+    }
+    
+    .select-wrapper:focus-within::after {
+      width: 100%;
+    }
+    
+    /* Hide inline chevron icons since we're using custom CSS arrows */
+    .select-wrapper > i[data-lucide="chevron-down"] {
+      display: none;
+    }
+    .hidden { display: none !important; }
+    .count { font-variant-numeric: tabular-nums; }
+
+    /* Auth page styles */
+    .auth-wrap {
+      min-height: 100vh;
+      max-width: 430px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .auth-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        radial-gradient(600px 400px at 50% 0%, rgba(15,118,110,0.22), transparent 60%),
+        radial-gradient(500px 500px at 80% 100%, rgba(245,158,11,0.18), transparent 55%),
+        radial-gradient(400px 300px at -10% 60%, rgba(124,58,237,0.14), transparent 50%),
+        linear-gradient(170deg, #f0fdfa 0%, #fffbeb 50%, #fdf2f8 100%);
+    }
+    .auth-bg .orb {
+      position: absolute; border-radius: 999px; filter: blur(60px); opacity: 0.5;
+    }
+    .auth-bg .orb.a { width: 220px; height: 220px; background: #99f6e4; top: -60px; right: -40px; }
+    .auth-bg .orb.b { width: 180px; height: 180px; background: #fde68a; bottom: 10%; left: -50px; }
+    .auth-bg .orb.c { width: 140px; height: 140px; background: #ddd6fe; top: 40%; right: -30px; }
+    .auth-content { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; padding: 24px; }
+    .auth-logo { text-align: center; padding-top: 20px; padding-bottom: 8px; }
+    .auth-logo .logo-ring {
+      width: 80px; height: 80px; margin: 0 auto; border-radius: 50%;
+      background: #fff; padding: 6px; box-shadow: 0 8px 30px rgba(15,118,110,0.15);
+      position: relative;
+    }
+    .auth-logo .logo-ring::after {
+      content: ''; position: absolute; inset: -4px; border-radius: 50%;
+      background: conic-gradient(from 0deg, #0f766e, #14b8a6, #f59e0b, #7c3aed, #0f766e);
+      z-index: -1; opacity: 0.6;
+      animation: authSpin 6s linear infinite;
+    }
+    @keyframes authSpin { to { transform: rotate(360deg); } }
+    .auth-logo .logo-ring img { width: 100%; height: 100%; border-radius: 50%; object-fit: contain; }
+    .auth-title { text-align: center; margin-top: 16px; }
+    .auth-title h1 { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.15; color: #0f172a; }
+    .auth-title p { font-size: 12px; color: #64748b; margin-top: 6px; font-weight: 500; }
+    .auth-tabs { display: flex; margin: 20px 0 0; background: #f1f5f9; border-radius: 14px; padding: 4px; gap: 4px; }
+    .auth-tab { flex: 1; padding: 10px; border-radius: 12px; text-align: center; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.2s; border: none; background: none; }
+    .auth-tab.active { background: #fff; color: #0f766e; box-shadow: 0 2px 8px rgba(15,118,110,0.10); }
+    .auth-form { margin-top: 20px; flex: 1; }
+    .auth-field { margin-bottom: 14px; }
+    .auth-field label { display: block; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .auth-field .fwrap { position: relative; }
+    .auth-field .fwrap .ficon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8; }
+    .auth-field input, .auth-field select {
+      width: 100%; padding: 13px 14px 13px 42px; border-radius: 14px;
+      background: rgba(255,255,255,0.85); border: 1.5px solid #e2e8f0;
+      font-size: 14px; font-weight: 500; color: #0f172a;
+      outline: none; transition: all 0.2s;
+    }
+    .auth-field input:focus, .auth-field select:focus {
+      border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,0.12);
+      background: #fff;
+    }
+    .auth-field input::placeholder { color: #94a3b8; font-weight: 400; }
+    .auth-btn {
+      width: 100%; padding: 15px; border-radius: 16px; border: none;
+      font-size: 15px; font-weight: 800; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .auth-btn.primary {
+      background: linear-gradient(135deg, #0f766e 0%, #0891b2 100%);
+      color: #fff; box-shadow: 0 8px 24px rgba(15,118,110,0.3);
+    }
+    .auth-btn.primary:active { transform: scale(0.98); }
+    .auth-footer { text-align: center; padding: 16px 0 24px; }
+    .auth-footer p { font-size: 12px; color: #94a3b8; }
+    .auth-footer a { color: #0f766e; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .auth-footer a:hover { text-decoration: underline; }
+    .auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .auth-field select { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-position: right 14px center; background-size: 16px; background-repeat: no-repeat; cursor: pointer; }
+    .pw-toggle {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: #94a3b8;
+      padding: 2px; display: flex; align-items: center;
+    }
+    .pw-toggle:hover { color: #64748b; }
+    /* Profile view */
+    .profile-card { border-radius: 20px; overflow: hidden; }
+    .profile-hdr {
+      background: linear-gradient(135deg, #064e3b 0%, #0f766e 45%, #0891b2 100%);
+      padding: 20px; text-align: center; color: #fff; position: relative;
+    }
+    .profile-hdr::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 70% 30%, rgba(255,255,255,0.1) 0, transparent 30%);
+    }
+    .profile-hdr * { position: relative; z-index: 1; }
+    .profile-avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: rgba(255,255,255,0.18); border: 2px solid rgba(255,255,255,0.3);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 10px; font-size: 24px; font-weight: 900; color: #fff;
+    }
+    select { background-image: none; }
+    input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #99f6e4; border-radius: 4px; }
+  </style>
+</head>
+<body class="text-slate-900 antialiased selection:bg-teal-200/70 selection:text-teal-950">
+
+  <!-- =============== AUTH PAGE =============== -->
+  <div id="authPage" class="auth-wrap">
+    <div class="auth-bg"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+    <div class="auth-content">
+      <div class="auth-logo">
+        <div class="logo-ring">
+          <img src="https://image.pngaaa.com/693/3149693-middle.png" alt="BUTEX" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=&quot;w-full h-full rounded-full bg-teal-700 flex items-center justify-center text-white font-extrabold text-[11px]&quot;>BUTEX</div>'">
+        </div>
+      </div>
+      <div class="auth-title">
+        <h1>Bangladesh University<br>of Textiles</h1>
+        <p>Campus Transit System</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+        <button class="auth-tab" onclick="switchAuthTab('signup')">Create Account</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+        <div class="auth-field">
+          <label>Student ID</label>
+          <div class="fwrap">
+            <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            <input type="text" id="loginId" placeholder="e.g. 22010101059" required>
+          </div>
+        </div>
+        <div class="auth-field">
+          <label>Password</label>
+          <div class="fwrap">
+            <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="loginPass" placeholder="Enter your password" required>
+            <button type="button" class="pw-toggle" onclick="togglePw('loginPass',this)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="auth-btn primary">
+          Sign In
+        </button>
+        <div class="auth-footer">
+          <p>Don't have an account? <a onclick="switchAuthTab('signup')">Create one</a></p>
+        </div>
+      </form>
+
+      <!-- SIGNUP FORM -->
+      <form id="signupForm" class="auth-form hidden" onsubmit="handleSignup(event)">
+        <div class="auth-field">
+          <label>Full Name</label>
+          <div class="fwrap">
+            <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="signupName" placeholder="Shoayeb Al Jannat" required>
+          </div>
+        </div>
+        <div class="auth-row">
+          <div class="auth-field">
+            <label>Student ID</label>
+            <div class="fwrap">
+              <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              <input type="text" id="signupId" placeholder="22010101059" required>
+            </div>
+          </div>
+          <div class="auth-field">
+            <label>Batch</label>
+            <div class="fwrap">
+              <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+              <select id="signupBatch" required>
+                <option value="">Batch</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="auth-field">
+          <label>Department</label>
+          <div class="fwrap">
+            <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <select id="signupDept" required>
+              <option value="">Select department</option>
+              <option>YE</option><option>FE</option><option>WPE</option><option>AE</option>
+              <option>TEM</option><option>TFD</option><option>IPE</option><option>DCE</option>
+              <option>TMDM</option><option>ESE</option><option>TME</option>
+            </select>
+          </div>
+        </div>
+        <div class="auth-field">
+          <label>Phone Number</label>
+          <div class="fwrap">
+            <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <input type="tel" id="signupPhone" placeholder="01XXX-XXXXXX" maxlength="14" required>
+          </div>
+        </div>
+        <div class="auth-field">
+          <label>Email</label>
+          <div class="fwrap">
+            <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" id="signupEmail" placeholder="name@butex.edu.bd" required>
+          </div>
+        </div>
+        <div class="auth-field">
+          <label>Password</label>
+          <div class="fwrap">
+            <svg class="ficon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="signupPass" placeholder="Min 6 characters" minlength="6" required>
+            <button type="button" class="pw-toggle" onclick="togglePw('signupPass',this)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="auth-btn primary">
+          Create Account
+        </button>
+        <div class="auth-footer">
+          <p>Already have an account? <a onclick="switchAuthTab('login')">Sign in</a></p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =============== MAIN APP =============== -->
+  <div id="appContainer" class="hidden">
+  <div class="shell relative">
+    <header class="relative overflow-hidden bg-gradient-to-br from-teal-800 via-teal-700 to-emerald-800 text-white">
+      <svg class="absolute inset-0 w-full h-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
+        <defs><pattern id="headerPattern" width="34" height="34" patternUnits="userSpaceOnUse"><circle cx="17" cy="17" r="1" fill="white"/><path d="M0 17H34M17 0V34" stroke="white" stroke-width="0.35"/></pattern></defs>
+        <rect width="100%" height="100%" fill="url(#headerPattern)"/>
+      </svg>
+      <div class="relative px-5 pt-5 pb-4">
+        <div class="flex items-center gap-4">
+          <div class="relative shrink-0">
+            <div class="absolute -inset-1 rounded-full bg-white/15 blur-md"></div>
+            <div class="relative w-16 h-16 rounded-full bg-white p-1.5 shadow-lg ring-2 ring-white/40">
+              <img src="https://image.pngaaa.com/693/3149693-middle.png" alt="BUTEX Logo" class="h-full w-full object-contain" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=&quot;w-full h-full rounded-full bg-teal-700 flex items-center justify-center text-white font-extrabold text-xs&quot;>BUTEX</div>'">
+            </div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] font-semibold tracking-[0.22em] uppercase text-teal-100">Official Campus Transit</p>
+            <h1 class="display mt-1 text-[23px] font-extrabold leading-[1.08]">Bangladesh University of Textiles</h1>
+          </div>
+        </div>
+      </div>
+      <div class="h-2 bg-gradient-to-r from-amber-500 via-amber-300 to-amber-500"></div>
+    </header>
+
+    <section class="px-5 pb-4 pt-5">
+      <div class="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-teal-800 ring-1 ring-teal-200">
+        <i data-lucide="bus" class="h-3 w-3"></i>BUTEX Transit System
+      </div>
+    </section>
+
+    <main class="px-5 pb-[100px]">
+      <section id="view-home" class="view-section">
+        <div class="mb-6 grid grid-cols-3 gap-3">
+          <div class="card p-3"><div class="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700"><i data-lucide="route" class="h-4 w-4 text-white"></i></div><p class="text-[10px] font-extrabold uppercase tracking-wider leading-none text-slate-500">Routes</p><p id="statBuses" class="display count mt-1 text-[24px] font-extrabold leading-none text-slate-950">0</p><p class="mt-0.5 text-[10px] font-semibold text-slate-500">Active</p></div>
+          <div class="card p-3"><div class="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-amber-700"><i data-lucide="armchair" class="h-4 w-4 text-white"></i></div><p class="text-[10px] font-extrabold uppercase tracking-wider leading-none text-slate-500">Seats</p><p id="statSeats" class="display count mt-1 text-[24px] font-extrabold leading-none text-slate-950">0</p><p class="mt-0.5 text-[10px] font-semibold text-slate-500">Open</p></div>
+          <div class="card p-3"><div class="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-sky-700"><i data-lucide="graduation-cap" class="h-4 w-4 text-white"></i></div><p class="text-[10px] font-extrabold uppercase tracking-wider leading-none text-slate-500">Students</p><p id="statStudents" class="display count mt-1 text-[24px] font-extrabold leading-none text-slate-950">0</p><p class="mt-0.5 text-[10px] font-semibold text-slate-500">Booked</p></div>
+        </div>
+
+        <div class="mb-4 flex items-center justify-between">
+          <div class="flex items-center gap-2.5"><div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950"><i data-lucide="calendar-days" class="h-5 w-5 text-white"></i></div><div><p class="text-[10px] font-extrabold uppercase tracking-wider leading-none text-slate-500">Schedule</p><p id="currentDate" class="mt-0.5 text-[14px] font-bold leading-tight text-slate-950">-</p></div></div>
+          <div class="flex items-center gap-1 rounded-xl bg-white p-1 ring-1 ring-teal-100"><button class="chip active rounded-lg bg-teal-700 px-3 py-1.5 text-[11px] font-extrabold text-white" data-filter="all">All</button><button class="chip rounded-lg px-3 py-1.5 text-[11px] font-extrabold text-slate-600" data-filter="today">Today</button></div>
+        </div>
+
+        <div id="tripsContainer" class="space-y-3"></div>
+        <div id="emptyTrips" class="hidden py-16 text-center"><div class="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50 ring-1 ring-teal-200"><i data-lucide="bus" class="h-7 w-7 text-teal-700"></i></div><p class="font-extrabold text-slate-950">No departures scheduled</p><p class="mt-1 text-[13px] text-slate-500">Please contact the transport office.</p></div>
+      </section>
+
+      <!-- ====== BOOK VIEW ====== -->
+      <section id="view-book" class="view-section hidden">
+        <form id="bookingForm" class="space-y-4">
+          <!-- Trip select -->
+          <div class="card overflow-hidden">
+            <div class="flex items-center gap-2.5 border-b border-teal-100 bg-teal-50 px-4 py-3">
+              <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-700"><i data-lucide="map" class="h-3.5 w-3.5 text-white"></i></div>
+              <div><p class="text-[11px] font-extrabold leading-none text-slate-800">Trip Details</p><p class="mt-0.5 text-[11px] leading-none text-slate-500">Choose destination and departure time</p></div>
+            </div>
+            <div class="p-4">
+              <div class="select-wrapper"><select id="tripSelect" required class="field w-full rounded-xl px-3.5 py-3 text-[14px] font-bold text-slate-900"><option value="">Choose your trip...</option></select></div>
+            </div>
+          </div>
+
+          <!-- Read-only student info -->
+          <div class="card overflow-hidden">
+            <div class="flex items-center justify-between gap-2 border-b border-teal-100 bg-teal-50 px-4 py-3">
+              <div class="flex items-center gap-2.5">
+                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-700"><i data-lucide="user-check" class="h-3.5 w-3.5 text-white"></i></div>
+                <div><p class="text-[11px] font-extrabold leading-none text-slate-800">Passenger</p><p class="mt-0.5 text-[11px] leading-none text-slate-500">Your registered profile</p></div>
+              </div>
+              <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">Verified</span>
+            </div>
+            <div class="p-4" id="bookPassengerCard"></div>
+          </div>
+
+          <!-- hidden inputs carry the data -->
+          <input type="hidden" id="studentName">
+          <input type="hidden" id="studentId">
+          <input type="hidden" id="studentBatch">
+          <input type="hidden" id="studentPhone">
+          <input type="hidden" id="studentDept">
+
+          <label class="flex cursor-pointer items-start gap-2.5">
+            <input id="agreeTerms" type="checkbox" required class="mt-1 h-[18px] w-[18px] rounded-md accent-teal-700 ring-1 ring-slate-300">
+            <span class="text-[12px] leading-snug text-slate-600">I confirm that I am a current BUTEX student and agree to the <span class="font-extrabold text-teal-800">transit code of conduct</span>.</span>
+          </label>
+
+          <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-[18px] bg-teal-800 py-[14px] text-[15px] font-extrabold text-white shadow-[0_8px_24px_rgba(15,118,110,0.28)]">
+            <i data-lucide="ticket" class="h-[18px] w-[18px]"></i>Generate Boarding Pass
+          </button>
+        </form>
+
+        <div id="bookingSuccess" class="hidden mt-5">
+          <div class="card bg-emerald-50 p-5 ring-emerald-200">
+            <div class="flex items-start gap-3.5">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-700"><i data-lucide="check" class="h-6 w-6 text-white"></i></div>
+              <div class="flex-1">
+                <p class="text-[11px] font-extrabold uppercase tracking-wider leading-none text-emerald-800">Confirmed</p>
+                <h3 class="display mt-1 text-[19px] font-extrabold leading-tight text-slate-950">Seat Reserved</h3>
+                <p class="mt-1.5 text-[13px] leading-snug text-slate-700">Your boarding pass is ready. Present it at boarding.</p>
+                <div class="mt-4 flex gap-2.5">
+                  <button id="downloadTicket" class="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-slate-950 py-[11px] text-[13px] font-extrabold text-white"><i data-lucide="printer" class="h-4 w-4"></i>Print / Save PDF</button>
+                  <button id="newBooking" class="rounded-xl bg-white px-4 py-[11px] text-[13px] font-extrabold text-slate-700 ring-1 ring-slate-200">New</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== TICKETS / PASSES VIEW ====== -->
+      <section id="view-tickets" class="view-section hidden">
+        <div class="mb-5">
+          <h2 class="display text-[27px] font-extrabold leading-[1.1] text-slate-950">My Boarding<br><span class="text-teal-800">Passes</span></h2>
+          <p class="mt-1.5 text-[13px] leading-snug text-slate-600">All your active tickets and trip history.</p>
+        </div>
+
+        <!-- Live tickets -->
+        <div class="mb-2 flex items-center gap-2">
+          <div class="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-600"><i data-lucide="zap" class="h-3.5 w-3.5 text-white"></i></div>
+          <h3 class="text-[13px] font-extrabold uppercase tracking-wider text-slate-700">Active</h3>
+          <span id="liveCount" class="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 ring-1 ring-emerald-200">0</span>
+        </div>
+        <div id="liveTickets" class="mb-6 space-y-3"></div>
+
+        <!-- History -->
+        <div class="mb-2 flex items-center gap-2">
+          <div class="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-500"><i data-lucide="archive" class="h-3.5 w-3.5 text-white"></i></div>
+          <h3 class="text-[13px] font-extrabold uppercase tracking-wider text-slate-500">History</h3>
+          <span id="histCount" class="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold text-slate-500 ring-1 ring-slate-200">0</span>
+        </div>
+        <div id="histTickets" class="mb-6 space-y-3"></div>
+
+        <div id="noTickets" class="hidden py-16 text-center">
+          <div class="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 ring-1 ring-slate-200"><i data-lucide="ticket-x" class="h-7 w-7 text-slate-400"></i></div>
+          <p class="font-extrabold text-slate-950">No tickets yet</p>
+          <p class="mt-1 text-[13px] text-slate-500">Book a trip to generate your boarding pass.</p>
+          <button onclick="switchView('book')" class="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-slate-950 px-5 py-2.5 text-[13px] font-extrabold text-white"><i data-lucide="ticket-plus" class="h-4 w-4"></i>Book a Trip</button>
+        </div>
+      </section>
+
+      <!-- Profile View -->
+      <section id="view-profile" class="view-section hidden">
+        <div id="profileContent"></div>
+      </section>
+
+      <section id="view-admin" class="view-section hidden">
+        <div id="adminLogin"><div class="mx-auto max-w-sm pt-6"><div class="mb-6 text-center"><div class="mx-auto mb-3 flex h-[72px] w-[72px] items-center justify-center rounded-[22px] bg-teal-800 shadow-lg"><i data-lucide="shield-check" class="h-8 w-8 text-white"></i></div><p class="text-[11px] font-extrabold uppercase tracking-widest leading-none text-slate-500">Transport Office</p><h2 class="display mt-1.5 text-[24px] font-extrabold leading-tight text-slate-950">Admin Access</h2><p class="mt-1 text-[12px] text-slate-600">Bangladesh University of Textiles</p></div><div class="card p-5"><label class="text-[11px] font-extrabold uppercase tracking-wider text-slate-700">Password</label><div class="relative mt-2"><i data-lucide="lock" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i><input id="adminPass" type="password" placeholder="Enter staff password" class="field w-full rounded-xl py-3 pl-9 pr-3 text-[14px] font-medium"></div><button id="adminLoginBtn" class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 py-[13px] font-extrabold text-white"><i data-lucide="log-in" class="h-4 w-4"></i>Sign In</button></div></div></div>
+        <div id="adminPanel" class="hidden">
+          <div class="mb-5 flex items-center justify-between">
+            <div>
+              <h2 class="display text-[24px] font-extrabold leading-tight text-slate-950">Operations Dashboard</h2>
+              <p class="mt-0.5 text-[12px] text-slate-600">Advanced system controls</p>
+            </div>
+            <button id="adminLogout" class="flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-[12px] font-extrabold text-slate-700 ring-1 ring-slate-200">
+              <i data-lucide="log-out" class="h-3.5 w-3.5"></i>Exit
+            </button>
+          </div>
+
+          <!-- Admin Quick Tools -->
+          <div class="mb-5 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <button onclick="exportData()" class="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[11px] font-bold text-slate-700 ring-1 ring-slate-200">
+              <i data-lucide="download" class="h-3.5 w-3.5 text-blue-600"></i>Export Data
+            </button>
+            <button onclick="clearPastTrips()" class="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[11px] font-bold text-slate-700 ring-1 ring-slate-200">
+              <i data-lucide="trash-2" class="h-3.5 w-3.5 text-rose-600"></i>Clean History
+            </button>
+            <button onclick="resetSystem()" class="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[11px] font-bold text-slate-700 ring-1 ring-slate-200">
+              <i data-lucide="rotate-ccw" class="h-3.5 w-3.5 text-amber-600"></i>Hard Reset
+            </button>
+          </div>
+
+          <div class="mb-5 grid grid-cols-3 gap-2.5">
+            <div class="rounded-2xl bg-slate-950 p-3.5 text-white">
+              <i data-lucide="route" class="mb-2 h-4 w-4 opacity-80"></i>
+              <p class="text-[10px] font-extrabold uppercase tracking-wider opacity-80">Trips</p>
+              <p id="aStatTrips" class="display count mt-1 text-[22px] font-extrabold leading-none">0</p>
+            </div>
+            <div class="rounded-2xl bg-teal-800 p-3.5 text-white">
+              <i data-lucide="users" class="mb-2 h-4 w-4 opacity-80"></i>
+              <p class="text-[10px] font-extrabold uppercase tracking-wider opacity-80">Total Booked</p>
+              <p id="aStatBookings" class="display count mt-1 text-[22px] font-extrabold leading-none">0</p>
+            </div>
+            <div class="rounded-2xl bg-amber-700 p-3.5 text-white">
+              <i data-lucide="bar-chart-3" class="mb-2 h-4 w-4 opacity-80"></i>
+              <p class="text-[10px] font-extrabold uppercase tracking-wider opacity-80">Occupancy</p>
+              <p id="aOccupancy" class="display count mt-1 text-[22px] font-extrabold leading-none">0%</p>
+            </div>
+          </div>
+
+          <div class="card mb-5 overflow-hidden">
+            <div class="flex items-center gap-2.5 border-b border-teal-100 bg-teal-50 px-4 py-3">
+              <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-800">
+                <i data-lucide="plus" class="h-3.5 w-3.5 text-white"></i>
+              </div>
+              <p class="text-[12px] font-extrabold text-slate-800">Schedule New Departure</p>
+            </div>
+            <div class="space-y-3 p-4">
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-[11px] font-extrabold text-slate-700">Date</label><input id="newDate" type="date" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
+                <div><label class="text-[11px] font-extrabold text-slate-700">Time</label><input id="newTime" type="time" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
+              </div>
+              <div><label class="text-[11px] font-extrabold text-slate-700">Destination</label><input id="newDestination" placeholder="e.g. Mirpur 10 - Campus Shuttle" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-[11px] font-extrabold text-slate-700">Seats</label><input id="newSeats" type="number" value="40" min="1" max="60" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-center text-[13px] font-extrabold"></div>
+                <div><label class="text-[11px] font-extrabold text-slate-700">Fare</label><div class="select-wrapper mt-1.5"><select id="newFare" class="field w-full rounded-xl px-3 py-[11px] text-[13px] font-extrabold"><option value="0">FREE</option><option value="30">BDT 30</option><option value="50">BDT 50</option></select></div></div>
+              </div>
+              <button id="addTripBtn" class="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-800 py-[12px] font-extrabold text-white">
+                <i data-lucide="calendar-plus" class="h-4 w-4"></i>Add Departure
+              </button>
+            </div>
+          </div>
+
+          <!-- Manage Batches -->
+          <div class="card mb-5 overflow-hidden">
+            <div class="flex items-center gap-2.5 border-b border-teal-100 bg-teal-50 px-4 py-3">
+              <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-700">
+                <i data-lucide="layers" class="h-3.5 w-3.5 text-white"></i>
+              </div>
+              <p class="text-[12px] font-extrabold text-slate-800">Manage Student Batches</p>
+            </div>
+            <div class="space-y-3 p-4">
+              <div class="flex gap-2">
+                <input id="newBatchInput" type="number" placeholder="e.g. 51" class="field flex-1 rounded-xl px-3 py-2 text-[13px] font-bold">
+                <button onclick="addBatch()" class="flex shrink-0 items-center gap-1 rounded-xl bg-amber-700 px-4 text-[13px] font-extrabold text-white">
+                  <i data-lucide="plus" class="h-4 w-4"></i>Add
+                </button>
+              </div>
+              <div id="adminBatchesList" class="flex flex-wrap gap-1.5 pt-1"></div>
+            </div>
+          </div>
+
+          <!-- Trip List with expanded controls -->
+          <div class="mb-6">
+            <h3 class="mb-3 flex items-center gap-2 text-[15px] font-extrabold text-slate-950">
+              <i data-lucide="list" class="h-4 w-4 text-slate-700"></i>Manage Trips 
+              <span id="tripCountBadge" class="count ml-auto rounded-lg bg-slate-950 px-2.5 py-1 text-[11px] font-extrabold text-white">0</span>
+            </h3>
+            <div id="adminTrips" class="space-y-2.5"></div>
+          </div>
+
+          <!-- Booking List with search -->
+          <div>
+            <h3 class="mb-3 flex items-center gap-2 text-[15px] font-extrabold text-slate-950">
+              <i data-lucide="users" class="h-4 w-4 text-slate-700"></i>Student Manifest 
+              <span id="bookingCount" class="count ml-auto rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-700">0</span>
+            </h3>
+            <div class="card mb-3 space-y-2.5 p-3">
+              <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="adminBookingSearch" oninput="renderAdmin()" placeholder="Search by Name, ID or Phone..." class="field w-full rounded-xl px-3 py-2 pl-9 text-[12px] font-medium">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="relative">
+                  <i data-lucide="calendar" class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"></i>
+                  <input type="date" id="adminFilterDate" oninput="renderAdmin()" class="field w-full rounded-xl px-3 py-2 pl-8 text-[12px] font-medium">
+                </div>
+                <div class="select-wrapper relative">
+                  <i data-lucide="bus" class="pointer-events-none absolute left-3 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"></i>
+                  <select id="adminFilterRoute" onchange="renderAdmin()" class="field w-full rounded-xl px-3 py-2 pl-8 pr-7 text-[12px] font-medium">
+                    <option value="">All Routes</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-2 pt-1">
+                <button onclick="clearAdminFilters()" class="flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 ring-1 ring-slate-200">
+                  <i data-lucide="x-circle" class="h-3 w-3"></i>Clear Filters
+                </button>
+                <p id="adminFilterStatus" class="text-[10px] font-bold text-slate-500"></p>
+              </div>
+            </div>
+            <div id="adminBookings" class="max-h-[400px] space-y-2.5 overflow-y-auto pr-1 no-scrollbar"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 pb-[max(14px,env(safe-area-inset-bottom))]">
+      <div class="mx-4 rounded-[22px] bg-slate-950 p-1.5 shadow-[0_12px_40px_rgba(15,23,42,0.4)] ring-1 ring-white/10">
+        <div id="bottomNavGrid" class="grid grid-cols-4 gap-0.5">
+          <button data-view="home" class="nav-btn active flex flex-col items-center gap-1 rounded-[16px] bg-teal-800 py-[10px] text-white">
+            <i data-lucide="home" class="h-[18px] w-[18px]"></i><span class="text-[9px] font-extrabold leading-none tracking-wide">Home</span>
+          </button>
+          <button data-view="book" class="nav-btn flex flex-col items-center gap-1 rounded-[16px] py-[10px] text-slate-400">
+            <i data-lucide="ticket" class="h-[18px] w-[18px]"></i><span class="text-[9px] font-extrabold leading-none tracking-wide">Book</span>
+          </button>
+          <button data-view="tickets" class="nav-btn flex flex-col items-center gap-1 rounded-[16px] py-[10px] text-slate-400">
+            <i data-lucide="wallet" class="h-[18px] w-[18px]"></i><span class="text-[9px] font-extrabold leading-none tracking-wide">Passes</span>
+          </button>
+          <button data-view="profile" class="nav-btn flex flex-col items-center gap-1 rounded-[16px] py-[10px] text-slate-400">
+            <i data-lucide="user-circle" class="h-[18px] w-[18px]"></i><span class="text-[9px] font-extrabold leading-none tracking-wide">Profile</span>
+          </button>
+          <button data-view="admin" id="navBtnAdmin" class="nav-btn flex flex-col items-center gap-1 rounded-[16px] py-[10px] text-slate-400 hidden">
+            <i data-lucide="settings" class="h-[18px] w-[18px]"></i><span class="text-[9px] font-extrabold leading-none tracking-wide">Admin</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+  </div><!-- end shell -->
+  </div><!-- end appContainer -->
+
+  <div id="toast" class="pointer-events-none fixed left-1/2 top-5 z-50 flex -translate-x-1/2 -translate-y-2 items-center gap-2.5 rounded-[16px] bg-slate-950 px-4 py-3 text-[13px] font-extrabold text-white opacity-0 shadow-xl transition-all"><div id="toastIcon" class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600"><i data-lucide="check" class="h-4 w-4"></i></div><span id="toastMsg">Saved</span></div>
+
+  <!-- Custom Modern Confirmation Modal -->
+  <div id="customModal" class="hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-sm transform overflow-hidden rounded-[32px] bg-white p-6 shadow-2xl transition-all border border-slate-100">
+      <div id="modalIconContainer" class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl">
+        <i id="modalIcon" data-lucide="alert-triangle" class="h-8 w-8 text-white"></i>
+      </div>
+      <h3 id="modalTitle" class="display text-center text-xl font-black text-slate-950">Confirm Action</h3>
+      <p id="modalDesc" class="mt-2 text-center text-sm font-medium text-slate-500 leading-relaxed">Are you sure you want to proceed with this action?</p>
+      
+      <div class="mt-8 flex flex-col gap-3">
+        <button id="modalConfirmBtn" class="flex w-full items-center justify-center rounded-2xl py-4 text-sm font-black text-white shadow-lg transition-transform active:scale-95">Confirm</button>
+        <button id="modalCancelBtn" class="flex w-full items-center justify-center rounded-2xl bg-slate-100 py-4 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const supabaseUrl = 'https://ipkbhecttxlqyadxwchy.supabase.co';
+    const supabaseKey = 'sb_publishable_gJRL9AIr6p2wx-3S7bnWEw_msVWbL3g';
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    const state = { trips: [], bookings: [], batches: [], users: [], currentUser: null, currentView: 'home', admin: false, lastBooking: null, filter: 'all' };
+    const $ = id => document.getElementById(id);
+    const $all = selector => Array.from(document.querySelectorAll(selector));
+
+    function init() {
+      loadData();
+    }
+
+    function showAuth() {
+      $('authPage').classList.remove('hidden');
+      $('appContainer').classList.add('hidden');
+      populateSignupBatches();
+      lucide.createIcons();
+    }
+
+    function showApp() {
+      $('authPage').classList.add('hidden');
+      $('appContainer').classList.remove('hidden');
+      
+      const user = state.currentUser;
+      if (user) {
+        // Show/Hide Admin Tab based on role
+        const adminBtn = $('navBtnAdmin');
+        const navGrid = $('bottomNavGrid');
+        if (user.role === 'admin') {
+          adminBtn.classList.remove('hidden');
+          navGrid.classList.remove('grid-cols-4');
+          navGrid.classList.add('grid-cols-5');
+          state.admin = true; 
+        } else {
+          adminBtn.classList.add('hidden');
+          navGrid.classList.remove('grid-cols-5');
+          navGrid.classList.add('grid-cols-4');
+          state.admin = false;
+        }
+      }
+
+      bindEvents();
+      $('currentDate').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+      renderAll();
+      switchView('home');
+      const now = new Date();
+      $('newDate').valueAsDate = now;
+      $('newTime').value = now.toTimeString().slice(0, 5);
+      lucide.createIcons();
+    }
+
+    function populateSignupBatches() {
+      const batches = [...(state.batches || [])].sort((a, b) => parseInt(a) - parseInt(b));
+      const sel = $('signupBatch');
+      if (sel) {
+        sel.innerHTML = '<option value="">Batch</option>' + batches.map(b => `<option value="${b}">${b}</option>`).join('');
+      }
+    }
+
+    async function loadData() {
+      try {
+        const [usersRes, batchesRes, tripsRes, bookingsRes] = await Promise.all([
+          supabaseClient.from('users').select('*'),
+          supabaseClient.from('batches').select('*'),
+          supabaseClient.from('trips').select('*'),
+          supabaseClient.from('bookings').select('*')
+        ]);
+
+        state.users = usersRes.data || [];
+        state.batches = (batchesRes.data || []).map(b => b.batch_number);
+        state.trips = tripsRes.data || [];
+        state.bookings = bookingsRes.data || [];
+
+        // If no batches exist, initialize defaults in Supabase
+        if (state.batches.length === 0) {
+          state.batches = ['44', '45', '46', '47', '48', '49', '50'];
+          for (const b of state.batches) {
+            await supabaseClient.from('batches').insert([{ batch_number: b }]);
+          }
+        }
+
+        // Restore user session securely from token
+        const sid = localStorage.getItem('butexSession');
+        if (sid) {
+          state.currentUser = state.users.find(u => u.id === sid) || null;
+        }
+
+        if (state.currentUser) {
+          showApp();
+        } else {
+          showAuth();
+        }
+      } catch (err) {
+        console.error('Error loading data from Supabase:', err);
+        showToast('Error connecting to live database', 'error');
+      }
+    }
+
+    function saveData() { 
+      // Fully deprecated: all data operations go directly to live Supabase!
+    }
+    function tripDate(trip) { return new Date(`${trip.date}T${trip.time}`); }
+    function timeLabel(date) { return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }); }
+    function shortDate(date) { return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }
+
+    function bindEvents() {
+      $all('.nav-btn').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+      $('bookingForm').addEventListener('submit', handleBooking);
+      $('downloadTicket').addEventListener('click', downloadPDF);
+      $('newBooking').addEventListener('click', () => {
+        $('bookingSuccess').classList.add('hidden');
+        $('bookingForm').classList.remove('hidden');
+        // Reset only the trip select, keep student data
+        $('tripSelect').value = '';
+        $('agreeTerms').checked = false;
+        fillBookingCard();
+      });
+      // lookup removed — tickets auto-load from session
+      $('adminLoginBtn').addEventListener('click', adminLogin);
+      $('adminPass').addEventListener('keypress', e => { if (e.key === 'Enter') adminLogin(); });
+      $('adminLogout').addEventListener('click', () => { state.admin = false; $('adminPanel').classList.add('hidden'); $('adminLogin').classList.remove('hidden'); showToast('Signed out'); });
+      $('addTripBtn').addEventListener('click', addTrip);
+      $all('.chip').forEach(chip => chip.addEventListener('click', () => {
+        $all('.chip').forEach(c => { c.classList.remove('active', 'bg-teal-700', 'text-white'); c.classList.add('text-slate-600'); });
+        chip.classList.add('active', 'bg-teal-700', 'text-white');
+        chip.classList.remove('text-slate-600');
+        state.filter = chip.dataset.filter;
+        renderTrips();
+      }));
+    }
+
+    function switchView(view) {
+      state.currentView = view;
+      $all('.view-section').forEach(section => section.classList.add('hidden'));
+      $(`view-${view}`).classList.remove('hidden');
+      $all('.nav-btn').forEach(btn => {
+        const active = btn.dataset.view === view;
+        btn.classList.toggle('bg-teal-800', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('text-slate-400', !active);
+      });
+      if (view === 'home') renderTrips();
+      if (view === 'book') { populateTrips(); fillBookingCard(); }
+      if (view === 'tickets') renderMyTickets();
+      if (view === 'profile') renderProfile();
+      if (view === 'admin' && !state.admin) { $('adminPanel').classList.add('hidden'); $('adminLogin').classList.remove('hidden'); }
+      if (view === 'admin' && state.admin) renderAdmin();
+      window.scrollTo(0, 0);
+      lucide.createIcons();
+    }
+
+    function renderAll() { renderTrips(); populateTrips(); updateStats(); }
+    function updateStats() {
+      const totalSeats = state.trips.reduce((sum, trip) => sum + trip.seats, 0);
+      const booked = state.trips.reduce((sum, trip) => sum + (trip.booked || 0), 0);
+      $('statBuses').textContent = state.trips.length;
+      $('statSeats').textContent = totalSeats - booked;
+      $('statStudents').textContent = state.bookings.length;
+    }
+
+    function renderTrips() {
+      const wrap = $('tripsContainer');
+      const empty = $('emptyTrips');
+      let list = [...state.trips];
+      if (state.filter === 'today') list = list.filter(trip => trip.date === new Date().toISOString().split('T')[0]);
+      if (!list.length) { wrap.innerHTML = ''; empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+      list.sort((a, b) => tripDate(a) - tripDate(b));
+      wrap.innerHTML = list.map(trip => tripCard(trip)).join('');
+      lucide.createIcons();
+      updateStats();
+    }
+
+    function tripCard(trip) {
+      const booked = trip.booked || 0;
+      const remaining = trip.seats - booked;
+      const pct = Math.round((booked / trip.seats) * 100);
+      const date = tripDate(trip);
+      const today = date.toDateString() === new Date().toDateString();
+      const full = remaining <= 0;
+      let badge = { text: 'Available', bg: 'bg-emerald-50', textColor: 'text-emerald-800', ring: 'ring-emerald-200', bar: 'bg-emerald-700' };
+      if (pct >= 85) badge = { text: 'Almost Full', bg: 'bg-amber-50', textColor: 'text-amber-800', ring: 'ring-amber-200', bar: 'bg-amber-600' };
+      if (full) badge = { text: 'Full', bg: 'bg-rose-50', textColor: 'text-rose-800', ring: 'ring-rose-200', bar: 'bg-rose-600' };
+      return `
+      <div class="card overflow-hidden">
+        <div class="p-4">
+          <div class="flex items-start gap-3">
+            <div class="flex h-[60px] w-[56px] shrink-0 flex-col items-center justify-center rounded-[16px] bg-gradient-to-br from-teal-700 to-teal-900 text-white shadow-sm">
+              <span class="display text-[18px] font-extrabold leading-none">${date.getDate()}</span>
+              <span class="mt-0.5 text-[10px] font-extrabold leading-none opacity-90">${date.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase()}</span>
+              <span class="mt-0.5 text-[9px] font-semibold leading-none opacity-70">${date.getFullYear()}</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <h3 class="display text-[16px] font-extrabold leading-tight text-slate-950">${trip.destination}</h3>
+                  <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span class="inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-extrabold text-slate-700 ring-1 ring-slate-200"><i data-lucide="clock" class="h-3 w-3 text-slate-500"></i>${timeLabel(date)}</span>
+                    ${today ? '<span class="inline-flex items-center gap-1 rounded-lg bg-teal-50 px-2 py-1 text-[10px] font-extrabold text-teal-800 ring-1 ring-teal-200"><span class="h-1.5 w-1.5 rounded-full bg-teal-700"></span>Today</span>' : ''}
+                  </div>
+                </div>
+                <div class="shrink-0 text-right">
+                  <div class="inline-flex rounded-[12px] px-2.5 py-1 text-[11px] font-extrabold ${badge.bg} ${badge.textColor} ring-1 ${badge.ring}">${badge.text}</div>
+                  <div class="mt-1.5 text-[11px] font-extrabold ${trip.fare === 0 ? 'text-emerald-800' : 'text-slate-700'}">${trip.fare === 0 ? 'FREE' : 'BDT ' + trip.fare}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="mb-2 flex items-center justify-between"><div class="flex items-center gap-1.5"><i data-lucide="users" class="h-3.5 w-3.5 text-slate-500"></i><span class="text-[12px] font-bold text-slate-700">${booked} <span class="font-normal text-slate-500">/ ${trip.seats} seats</span></span></div><span class="text-[12px] font-extrabold text-slate-950">${remaining} left</span></div>
+            <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200"><div class="h-full rounded-full ${badge.bar}" style="width:${pct}%"></div></div>
+          </div>
+        </div>
+        <button onclick="quickBook('${trip.id}')" ${full ? 'disabled' : ''} class="flex w-full items-center justify-center gap-2 border-t border-slate-200 py-3 text-[13px] font-extrabold ${full ? 'cursor-not-allowed bg-slate-50 text-slate-400' : 'bg-teal-50 text-teal-800'}">${full ? '<i data-lucide="ban" class="h-4 w-4"></i>No Seats Available' : '<i data-lucide="ticket" class="h-4 w-4"></i>Reserve Seat for Free'}</button>
+      </div>`;
+    }
+
+    window.quickBook = tripId => { switchView('book'); setTimeout(() => { $('tripSelect').value = tripId; }, 80); };
+
+    function populateTrips() {
+      const available = state.trips.filter(trip => (trip.booked || 0) < trip.seats);
+      $('tripSelect').innerHTML = '<option value="">Choose your trip...</option>' + available.map(trip => {
+        const date = tripDate(trip);
+        const remaining = trip.seats - (trip.booked || 0);
+        return `<option value="${trip.id}">${shortDate(date)} - ${timeLabel(date)} - ${trip.destination} (${remaining} seats)</option>`;
+      }).join('');
+
+      const batches = [...(state.batches || [])].sort((a, b) => parseInt(a) - parseInt(b));
+      $('studentBatch').innerHTML = '<option value="">Select batch</option>' + batches.map(b => {
+        return `<option value="${b}">${b}</option>`;
+      }).join('');
+    }
+
+    async function handleBooking(event) {
+      event.preventDefault();
+      const tripId = $('tripSelect').value;
+      if (!tripId) { showToast('Select a trip', 'error'); return; }
+      const trip = state.trips.find(item => item.id === tripId);
+      if (!trip || (trip.booked || 0) >= trip.seats) { showToast('Trip is full', 'error'); return; }
+      const student = {
+        name: $('studentName').value.trim(), id: $('studentId').value.trim(), batch: $('studentBatch').value.trim(), phone: $('studentPhone').value.trim(), dept: $('studentDept').value
+      };
+      if (!student.name || !student.id || !student.batch || !student.phone || !student.dept) { showToast('Fill all required fields', 'error'); return; }
+      if (!/^[0-9+\-\s]{10,14}$/.test(student.phone)) { showToast('Enter a valid phone number', 'error'); return; }
+      if (state.bookings.find(item => item.studentId === student.id && item.tripId === tripId)) { showToast('You already have a ticket for this bus', 'error'); return; }
+      const now = new Date();
+      const ticketNo = `BTX-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      const booking = { id: 'b' + Date.now(), ticketNo, tripId, studentName: student.name, studentId: student.id, batch: student.batch, phone: student.phone, department: student.dept, timestamp: now.toISOString(), status: 'confirmed' };
+      
+      const newBookedCount = (trip.booked || 0) + 1;
+      
+      const [bookingRes, tripRes] = await Promise.all([
+        supabaseClient.from('bookings').insert([booking]),
+        supabaseClient.from('trips').update({ booked: newBookedCount }).eq('id', tripId)
+      ]);
+
+      if (bookingRes.error) {
+        console.error('Booking reservation error:', bookingRes.error);
+        showToast('Error reserving live seat', 'error');
+        return;
+      }
+
+      state.bookings.push(booking);
+      trip.booked = newBookedCount;
+      state.lastBooking = booking;
+      renderTrips(); populateTrips();
+      $('bookingForm').classList.add('hidden'); $('bookingSuccess').classList.remove('hidden');
+      showToast('Boarding pass generated', 'success'); lucide.createIcons();
+    }
+
+    function downloadPDF() {
+      if (!state.lastBooking) return;
+      const b = state.lastBooking;
+      const t = state.trips.find(item => item.id === b.tripId);
+      if (!t) return;
+      const dt = tripDate(t);
+
+      // Generate QR code synchronously with QRious
+      let qrDataUrl = '';
+      try {
+        const qr = new QRious({
+          value: b.ticketNo,
+          size: 220,
+          background: '#ffffff',
+          foreground: '#0f172a',
+          level: 'H',
+          padding: 8
+        });
+        qrDataUrl = qr.toDataURL();
+      } catch (e) {
+        console.error('QR generation failed', e);
+      }
+
+      const fareLabel = t.fare === 0 ? 'FREE' : 'BDT ' + t.fare;
+      const dayName = dt.toLocaleDateString('en-GB', { weekday: 'long' });
+      const dateNum = String(dt.getDate()).padStart(2, '0');
+      const monthYear = dt.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+      const issuedAt = new Date().toLocaleString('en-GB');
+      const safe = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+      const ticketHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>BUTEX Pass - ${safe(b.ticketNo)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: letter; margin: 10mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #f8fffd;
+    color: #0f172a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ticket {
+    width: 100%;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(15,118,110,0.10);
+    box-shadow: 0 8px 30px rgba(15,118,110,0.08);
+  }
+
+  .hero {
+    position: relative;
+    padding: 18px 22px 14px;
+    background: linear-gradient(135deg, #064e3b 0%, #0f766e 35%, #14b8a6 70%, #2dd4bf 100%);
+    color: #fff;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.12) 0, transparent 20%),
+                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.10) 0, transparent 18%),
+                radial-gradient(circle at 60% 110%, rgba(251,191,36,0.25) 0, transparent 25%);
+  }
+  .hero * { position: relative; z-index: 1; }
+  .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+  .uni-block { flex: 1; }
+  .uni-kicker {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.12);
+    color: #d1fae5; font-size: 9px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
+  }
+  .uni-name { margin-top: 8px; font-size: 22px; font-weight: 900; line-height: 1.05; letter-spacing: -0.8px; }
+  .uni-sub { margin-top: 4px; font-size: 10px; color: rgba(236,253,245,0.85); letter-spacing: 2px; text-transform: uppercase; }
+  .ticket-chip {
+    align-self: flex-start; padding: 8px 12px; min-width: 140px;
+    border-radius: 14px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(8px); text-align: right;
+  }
+  .ticket-chip .label { font-size: 8px; font-weight: 700; letter-spacing: 1.4px; color: #ccfbf1; text-transform: uppercase; }
+  .ticket-chip .value { margin-top: 3px; font-size: 11px; font-weight: 900; color: #fff; letter-spacing: 0.8px; word-break: break-word; }
+
+  .hero-band {
+    margin-top: 12px;
+    display: grid; grid-template-columns: 1fr auto 1.3fr; gap: 12px; align-items: center;
+  }
+  .terminal {
+    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 16px; padding: 10px 14px; backdrop-filter: blur(6px);
+  }
+  .terminal .lbl { font-size: 8px; font-weight: 800; color: #d1fae5; text-transform: uppercase; letter-spacing: 1.4px; }
+  .terminal .value { margin-top: 4px; font-size: 18px; font-weight: 900; line-height: 1.05; color: #fff; word-break: break-word; }
+  .terminal .det { margin-top: 3px; font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.75); }
+  .direction {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 4px solid rgba(255,255,255,0.14);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+  }
+  .direction svg { width: 20px; height: 20px; stroke: #0f766e; }
+  .hero-bottom {
+    margin-top: 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .status-pill, .issue-pill {
+    border-radius: 999px; padding: 5px 10px;
+    font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.12);
+  }
+  .issue-pill { color: #ecfeff; } .status-pill { color: #fefce8; }
+
+  .content {
+    position: relative;
+    padding: 14px 18px 16px;
+    display: flex; flex-direction: column; gap: 10px; flex: 1;
+  }
+  .metrics {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  }
+  .metric {
+    border-radius: 14px; padding: 10px 8px 9px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    border: 1px solid transparent; text-align: center;
+  }
+  .metric .m-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; }
+  .metric .m-big { margin-top: 5px; font-size: 22px; font-weight: 900; line-height: 1; }
+  .metric .m-sub { margin-top: 3px; font-size: 9px; font-weight: 600; line-height: 1.2; }
+  .metric.date { background: linear-gradient(180deg, #ecfeff, #d1fae5); border-color: #a7f3d0; }
+  .metric.date .m-label, .metric.date .m-big { color: #0f766e; }
+  .metric.time { background: linear-gradient(180deg, #fefce8, #fde68a); border-color: #fcd34d; }
+  .metric.time .m-label, .metric.time .m-big { color: #b45309; }
+  .metric.fare { background: linear-gradient(135deg, #0f766e, #2dd4bf); }
+  .metric.fare .m-label, .metric.fare .m-big, .metric.fare .m-sub { color: #fff; }
+  .metric.status { background: linear-gradient(135deg, #7c3aed, #ec4899); }
+  .metric.status .m-label, .metric.status .m-big, .metric.status .m-sub { color: #fff; }
+
+  .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 10px; flex: 1; }
+  .panel {
+    background: rgba(255,255,255,0.92); border: 1px solid rgba(148,163,184,0.14);
+    border-radius: 18px; box-shadow: 0 6px 18px rgba(15,23,42,0.04); overflow: hidden;
+  }
+  .panel-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; }
+  .panel-hd.passenger { background: linear-gradient(90deg, #ccfbf1, #effcf8); }
+  .panel-hd.qr-hd { background: linear-gradient(90deg, #ede9fe, #dbeafe); }
+  .panel-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #0f172a; }
+  .dept-badge {
+    background: #fff; padding: 4px 10px; border-radius: 999px;
+    font-size: 9px; font-weight: 800; color: #0f766e; border: 1px solid rgba(15,118,110,0.08);
+  }
+  .rows { padding: 8px; display: grid; gap: 6px; }
+  .row-card {
+    display: flex; gap: 10px; align-items: flex-start;
+    border-radius: 12px; padding: 8px 10px;
+  }
+  .row-card.soft-a { background: linear-gradient(90deg, #f8fafc, #fff); }
+  .row-card.soft-b { background: linear-gradient(90deg, #effcf8, #fff); }
+  .row-card.soft-c { background: linear-gradient(90deg, #fff7ed, #fff); }
+  .row-card.soft-d { background: linear-gradient(90deg, #fdf2f8, #fff); }
+  .row-label { width: 70px; flex-shrink: 0; font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #94a3b8; padding-top: 2px; }
+  .row-value { flex: 1; font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1.3; word-break: break-word; }
+
+  .qr-panel { display: flex; flex-direction: column; }
+  .qr-body {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 10px 8px 8px; gap: 8px;
+  }
+  .qr-frame {
+    width: 130px; height: 130px; background: #fff; border-radius: 16px;
+    padding: 8px; border: 1.5px solid #e2e8f0;
+    box-shadow: 0 4px 14px rgba(15,118,110,0.06);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qr-img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
+  .qr-fallback { font-size: 10px; font-weight: 700; color: #94a3b8; text-align: center; }
+  .qr-info { text-align: center; }
+  .qr-code-label { font-size: 8px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: #7c3aed; }
+  .qr-code-value { margin-top: 2px; font-size: 11px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; word-break: break-word; }
+  .qr-hint { margin-top: 3px; font-size: 8px; font-weight: 500; color: #64748b; line-height: 1.4; max-width: 160px; margin-left: auto; margin-right: auto; }
+
+  .ticket-foot {
+    margin-top: auto;
+    border-top: 1px dashed rgba(148,163,184,0.30);
+    padding-top: 10px;
+    display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+  }
+  .notes { display: grid; gap: 3px; }
+  .note-line { font-size: 9px; color: #475569; font-weight: 600; }
+  .print-mark {
+    text-align: right; padding: 8px 12px; border-radius: 14px;
+    background: linear-gradient(135deg, #0f766e 0%, #0b5e57 55%, #7c3aed 100%);
+    color: #fff; min-width: 180px;
+    box-shadow: 0 8px 18px rgba(15,118,110,0.12);
+  }
+  .print-mark .pm-a { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; font-weight: 800; }
+  .print-mark .pm-b { margin-top: 2px; font-size: 14px; font-weight: 900; letter-spacing: 1px; }
+  .print-mark .pm-c { margin-top: 2px; font-size: 8px; opacity: 0.85; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="ticket">
+  <div class="hero">
+    <div class="hero-top">
+      <div class="uni-block">
+        <div class="uni-kicker">Official University Transit</div>
+        <div class="uni-name">Bangladesh University of Textiles</div>
+        <div class="uni-sub">Campus Transit Boarding Pass</div>
+      </div>
+      <div class="ticket-chip">
+        <div class="label">Ticket No</div>
+        <div class="value">${safe(b.ticketNo)}</div>
+      </div>
+    </div>
+    <div class="hero-band">
+      <div class="terminal from">
+        <div class="lbl">From</div>
+        <div class="value">BUTEX</div>
+        <div class="det">Tejgaon, Dhaka-1208</div>
+      </div>
+      <div class="direction">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </div>
+      <div class="terminal to" style="text-align:right;">
+        <div class="lbl">To</div>
+        <div class="value" style="font-size:${t.destination.length > 24 ? '14px' : '18px'}">${safe(t.destination)}</div>
+        <div class="det">${safe(dt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</div>
+      </div>
+    </div>
+    <div class="hero-bottom">
+      <div class="status-pill">Status: Confirmed</div>
+      <div class="issue-pill">Issued: ${safe(issuedAt)}</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="metrics">
+      <div class="metric date">
+        <div class="m-label">Date</div>
+        <div class="m-big">${safe(dateNum)}</div>
+        <div class="m-sub">${safe(monthYear)}</div>
+      </div>
+      <div class="metric time">
+        <div class="m-label">Departure</div>
+        <div class="m-big">${safe(timeLabel(dt))}</div>
+        <div class="m-sub">${safe(dayName)}</div>
+      </div>
+      <div class="metric fare">
+        <div class="m-label">Fare</div>
+        <div class="m-big">${safe(fareLabel)}</div>
+        <div class="m-sub">${safe(t.fare === 0 ? 'Student Pass' : 'Paid Ticket')}</div>
+      </div>
+      <div class="metric status">
+        <div class="m-label">Category</div>
+        <div class="m-big">LIVE</div>
+        <div class="m-sub">Transport Boarding</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-hd passenger">
+          <div class="panel-title">Passenger Information</div>
+          <div class="dept-badge">${safe(b.department)}</div>
+        </div>
+        <div class="rows">
+          <div class="row-card soft-a"><div class="row-label">Full Name</div><div class="row-value">${safe(b.studentName)}</div></div>
+          <div class="row-card soft-b"><div class="row-label">Student ID</div><div class="row-value">${safe(b.studentId)}</div></div>
+          <div class="row-card soft-c"><div class="row-label">Phone No.</div><div class="row-value">${safe(b.phone || '-')}</div></div>
+          <div class="row-card soft-d"><div class="row-label">Batch</div><div class="row-value">${safe(b.batch)}</div></div>
+        </div>
+      </div>
+
+      <div class="panel qr-panel">
+        <div class="panel-hd qr-hd">
+          <div class="panel-title">Ticket Validation</div>
+          <div class="dept-badge">QR Verified</div>
+        </div>
+        <div class="qr-body">
+          <div class="qr-frame">
+            ${qrDataUrl ? '<img src="' + qrDataUrl + '" class="qr-img" alt="QR Code">' : '<div class="qr-fallback">QR Unavailable</div>'}
+          </div>
+          <div class="qr-info">
+            <div class="qr-code-label">Scan to Validate</div>
+            <div class="qr-code-value">${safe(b.ticketNo)}</div>
+            <div class="qr-hint">Scan this QR code to verify the authenticity of this boarding pass.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ticket-foot">
+      <div class="notes">
+        <div class="note-line">Route origin: BUTEX Main Campus, Tejgaon, Dhaka</div>
+        <div class="note-line">Issued by: BUTEX Transport Office</div>
+        <div class="note-line">Keep this page for inspection, entry, and boarding verification.</div>
+      </div>
+      <div class="print-mark">
+        <div class="pm-a">Official Print Pass</div>
+        <div class="pm-b">BUTEX TRANSIT</div>
+        <div class="pm-c">Letter-size browser print layout</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+
+      const oldFrame = document.getElementById('ticketPrintFrame');
+      if (oldFrame) oldFrame.remove();
+      const frame = document.createElement('iframe');
+      frame.id = 'ticketPrintFrame';
+      frame.style.position = 'fixed';
+      frame.style.right = '0';
+      frame.style.bottom = '0';
+      frame.style.width = '0';
+      frame.style.height = '0';
+      frame.style.border = '0';
+      frame.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(frame);
+
+      frame.onload = () => {
+        setTimeout(() => {
+          try {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+            showToast('Print dialog opened', 'success');
+          } catch (err) {
+            console.error(err);
+            showToast('Unable to open print dialog', 'error');
+          }
+        }, 500);
+      };
+
+      if ('srcdoc' in frame) {
+        frame.srcdoc = ticketHtml;
+      } else {
+        const frameDoc = frame.contentWindow.document;
+        frameDoc.open();
+        frameDoc.write(ticketHtml);
+        frameDoc.close();
+      }
+    }
+
+    function renderMyTickets() {
+      const u = state.currentUser;
+      if (!u) return;
+      const now = new Date();
+      const myBookings = state.bookings.filter(b => b.studentId === u.id);
+
+      const live = myBookings.filter(b => {
+        const t = state.trips.find(x => x.id === b.tripId);
+        return t && tripDate(t) >= now;
+      });
+      const hist = myBookings.filter(b => {
+        const t = state.trips.find(x => x.id === b.tripId);
+        return !t || tripDate(t) < now;
+      });
+
+      $('liveCount').textContent = live.length;
+      $('histCount').textContent = hist.length;
+
+      if (!myBookings.length) {
+        $('noTickets').classList.remove('hidden');
+        $('liveTickets').innerHTML = '';
+        $('histTickets').innerHTML = '';
+      } else {
+        $('noTickets').classList.add('hidden');
+        $('liveTickets').innerHTML = live.length
+          ? live.map(b => ticketCard(b, false)).join('')
+          : '<p class="text-[12px] text-slate-400 py-3 text-center">No active tickets</p>';
+        $('histTickets').innerHTML = hist.length
+          ? hist.map(b => ticketCard(b, true)).join('')
+          : '<p class="text-[12px] text-slate-400 py-3 text-center">No history yet</p>';
+      }
+      lucide.createIcons();
+    }
+
+    function ticketCard(booking, isPast) {
+      const trip = state.trips.find(item => item.id === booking.tripId);
+      const dest = trip ? trip.destination : 'Trip Removed';
+      const dt = trip ? tripDate(trip) : null;
+      const dateStr = dt ? dt.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) + ' - ' + timeLabel(dt) : 'N/A';
+      const fare = trip ? (trip.fare === 0 ? 'FREE' : 'BDT ' + trip.fare) : '-';
+      const fareColor = trip && trip.fare === 0 ? 'text-emerald-700' : 'text-slate-900';
+
+      if (isPast) {
+        return `
+        <div class="card overflow-hidden opacity-75">
+          <div class="h-[3px] w-full bg-slate-300"></div>
+          <div class="p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <h4 class="display text-[15px] font-extrabold leading-tight text-slate-600">${dest}</h4>
+                <p class="mt-1 flex items-center gap-1.5 text-[12px] text-slate-400"><i data-lucide="calendar" class="h-3 w-3"></i>${dateStr}</p>
+                <p class="mt-2 inline-block rounded-lg bg-slate-50 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-400 ring-1 ring-slate-200">${booking.ticketNo}</p>
+              </div>
+              <div class="shrink-0 text-right">
+                <span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-extrabold text-slate-500 ring-1 ring-slate-200 uppercase tracking-wide">History</span>
+                <p class="mt-1.5 text-[13px] font-extrabold ${fareColor}">${fare}</p>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
+              <p class="text-[11px] text-slate-400 font-medium">${booking.department} &bull; Batch ${booking.batch}</p>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      return `
+      <div class="card overflow-hidden">
+        <div class="h-[3px] w-full bg-gradient-to-r from-teal-600 to-emerald-500"></div>
+        <div class="p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <h4 class="display text-[15px] font-extrabold leading-tight text-slate-950">${dest}</h4>
+                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-extrabold text-emerald-700 ring-1 ring-emerald-200 uppercase">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Active
+                </span>
+              </div>
+              <p class="mt-1 flex items-center gap-1.5 text-[12px] text-slate-600"><i data-lucide="calendar" class="h-3 w-3"></i>${dateStr}</p>
+              <p class="mt-2 inline-block rounded-lg bg-teal-50 px-2.5 py-1 font-mono text-[11px] font-extrabold text-teal-800 ring-1 ring-teal-200">${booking.ticketNo}</p>
+            </div>
+            <div class="shrink-0 text-right">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fare</p>
+              <p class="mt-1 text-[18px] font-extrabold leading-none ${fareColor}">${fare}</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-dashed border-slate-200 pt-3 gap-2">
+            <p class="text-[11px] text-slate-600 font-semibold">${booking.department} &bull; Batch ${booking.batch}</p>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button onclick="downloadTicketById('${booking.id}')" class="flex items-center gap-1 rounded-lg bg-slate-900 px-2.5 py-1.5 text-[11px] font-extrabold text-white">
+                <i data-lucide="printer" class="h-3 w-3"></i>Print
+              </button>
+              <button onclick="cancelMyTicket('${booking.id}')" class="flex items-center gap-1 rounded-lg bg-rose-50 px-2.5 py-1.5 text-[11px] font-extrabold text-rose-600 ring-1 ring-rose-200">
+                <i data-lucide="x" class="h-3 w-3"></i>Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+
+
+    window.downloadTicketById = id => { state.lastBooking = state.bookings.find(item => item.id === id); if (state.lastBooking) downloadPDF(); };
+
+    function adminLogin() {
+      if ($('adminPass').value === 'butex2025') { state.admin = true; $('adminLogin').classList.add('hidden'); $('adminPanel').classList.remove('hidden'); $('adminPass').value = ''; renderAdmin(); showToast('Admin signed in', 'success'); }
+      else showToast('Wrong password', 'error');
+    }
+
+    function renderAdmin() {
+      const totalSeats = state.trips.reduce((sum, trip) => sum + trip.seats, 0);
+      const totalBooked = state.bookings.length;
+      const occupancy = totalSeats > 0 ? Math.round((totalBooked / totalSeats) * 100) : 0;
+
+      $('aStatTrips').textContent = state.trips.length;
+      $('aStatBookings').textContent = totalBooked;
+      $('aOccupancy').textContent = occupancy + '%';
+      
+      const sorted = [...state.trips].sort((a, b) => tripDate(a) - tripDate(b));
+      $('tripCountBadge').textContent = sorted.length;
+      $('adminTrips').innerHTML = sorted.map(adminTripCard).join('') || '<p class="py-6 text-center text-[13px] text-slate-500">No departures scheduled</p>';
+
+      // Populate route filter dropdown (preserve current selection)
+      const routeSelect = $('adminFilterRoute');
+      const currentRoute = routeSelect.value;
+      const uniqueRoutes = [...new Set(state.trips.map(t => t.destination))].sort();
+      routeSelect.innerHTML = '<option value="">All Routes</option>' + 
+        uniqueRoutes.map(r => `<option value="${r}" ${r === currentRoute ? 'selected' : ''}>${r}</option>`).join('');
+
+      const query = ($('adminBookingSearch')?.value || '').toLowerCase();
+      const filterDate = $('adminFilterDate')?.value || '';
+      const filterRoute = $('adminFilterRoute')?.value || '';
+      
+      let filteredBookings = [...state.bookings].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      if (query) {
+        filteredBookings = filteredBookings.filter(b => 
+          b.studentName.toLowerCase().includes(query) || 
+          b.studentId.toLowerCase().includes(query) ||
+          (b.phone || '').toLowerCase().includes(query)
+        );
+      }
+
+      if (filterDate) {
+        filteredBookings = filteredBookings.filter(b => {
+          const trip = state.trips.find(t => t.id === b.tripId);
+          return trip && trip.date === filterDate;
+        });
+      }
+
+      if (filterRoute) {
+        filteredBookings = filteredBookings.filter(b => {
+          const trip = state.trips.find(t => t.id === b.tripId);
+          return trip && trip.destination === filterRoute;
+        });
+      }
+
+      const activeFilters = [];
+      if (query) activeFilters.push('search');
+      if (filterDate) activeFilters.push('date');
+      if (filterRoute) activeFilters.push('route');
+      $('adminFilterStatus').textContent = activeFilters.length 
+        ? `Filtered by: ${activeFilters.join(', ')}` 
+        : `Showing all ${state.bookings.length} bookings`;
+
+      $('bookingCount').textContent = filteredBookings.length;
+      $('adminBookings').innerHTML = filteredBookings.map(adminBookingCard).join('') || '<p class="py-6 text-center text-[13px] text-slate-500">No bookings match your filters</p>';
+
+      const batches = [...(state.batches || [])].sort((a, b) => parseInt(a) - parseInt(b));
+      $('adminBatchesList').innerHTML = batches.map(b => {
+        return `
+          <div class="inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2.5 py-1 text-[11px] font-extrabold text-slate-700 ring-1 ring-slate-200">
+            <span>${b}</span>
+            <button onclick="removeBatch('${b}')" class="ml-1 text-rose-500 hover:text-rose-700">
+              <i data-lucide="x" class="h-3 w-3"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    window.clearAdminFilters = () => {
+      $('adminBookingSearch').value = '';
+      $('adminFilterDate').value = '';
+      $('adminFilterRoute').value = '';
+      renderAdmin();
+      showToast('Filters cleared');
+    };
+
+    window.exportData = () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "butex_transit_data.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      showToast('Data exported as JSON');
+    };
+
+
+
+
+
+
+
+    window.downloadTripManifest = (tripId) => {
+      const trip = state.trips.find(item => item.id === tripId);
+      if (!trip) { showToast('Trip not found', 'error'); return; }
+      
+      const manifest = state.bookings
+        .filter(b => b.tripId === tripId)
+        .sort((a, b) => a.studentName.localeCompare(b.studentName));
+      
+      if (manifest.length === 0) {
+        showToast('No bookings for this trip yet', 'error');
+        return;
+      }
+
+      const dt = tripDate(trip);
+      const safe = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+      let rows = '';
+      manifest.forEach((b, idx) => {
+        const bg = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
+        rows += `
+        <tr style="background:${bg};">
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:700;color:#0f172a;">${safe(b.studentName)}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#475569;font-family:monospace;">${safe(b.studentId)}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#475569;">${safe(b.batch)}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#475569;">${safe(b.department)}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:600;color:#475569;">${safe(b.phone || '-')}</td>
+          <td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:700;color:#0f766e;">${safe(b.ticketNo)}</td>
+        </tr>`;
+      });
+
+      const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Trip Manifest - ${safe(trip.destination)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  @page { size: letter; margin: 12mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #f8fffd;
+    color: #0f172a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .manifest {
+    max-width: 100%;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(15,118,110,0.10);
+    box-shadow: 0 6px 24px rgba(15,118,110,0.06);
+  }
+  .hdr {
+    background: linear-gradient(135deg, #064e3b 0%, #0f766e 45%, #0891b2 100%);
+    color: #fff;
+    padding: 20px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hdr::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 0, transparent 22%),
+                radial-gradient(circle at 20% 80%, rgba(251,191,36,0.18) 0, transparent 25%);
+  }
+  .hdr * { position: relative; z-index: 1; }
+  .hdr-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .hdr-title { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.1; }
+  .hdr-sub { font-size: 10px; font-weight: 600; color: #ccfbf1; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+  .hdr-chip {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px; padding: 8px 14px; text-align: right;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .hdr-chip .chip-val { font-size: 16px; font-weight: 900; margin-top: 2px; }
+  .hdr-meta {
+    display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px;
+  }
+  .hdr-meta-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.9);
+  }
+  .hdr-meta-item .m-dot { width: 5px; height: 5px; border-radius: 50%; background: #fbbf24; }
+  .content { padding: 16px 22px 20px; }
+  .content-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9;
+  }
+  .content-header .ch-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; }
+  .content-header .ch-count { font-size: 11px; font-weight: 800; background: #0f766e; color: #fff; padding: 3px 10px; border-radius: 999px; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 8px 14px; background: #f0fdfa;
+    font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; color: #0f766e;
+    border-bottom: 2px solid #ccfbf1;
+  }
+  .ftr {
+    background: linear-gradient(135deg, #0f766e 0%, #064e3b 100%);
+    color: #fff; padding: 14px 22px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 10px; font-weight: 600;
+  }
+  .ftr .ftr-left { opacity: 0.8; }
+  .ftr .ftr-right { font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; }
+</style>
+</head>
+<body>
+<div class="manifest">
+  <div class="hdr">
+    <div class="hdr-top">
+      <div>
+        <div class="hdr-title">Bangladesh University of Textiles</div>
+        <div class="hdr-sub">Trip Manifest</div>
+      </div>
+      <div class="hdr-chip">
+        Boarding Passes
+        <div class="chip-val">${manifest.length}</div>
+      </div>
+    </div>
+    <div class="hdr-meta">
+      <div class="hdr-meta-item"><span class="m-dot"></span>${safe(trip.destination)}</div>
+      <div class="hdr-meta-item"><span class="m-dot"></span>${safe(dt.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' }))}</div>
+      <div class="hdr-meta-item"><span class="m-dot"></span>${safe(timeLabel(dt))}</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="content-header">
+      <span class="ch-label">Student Manifest</span>
+      <span class="ch-count">${manifest.length} Students</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Student ID</th>
+          <th>Batch</th>
+          <th>Department</th>
+          <th>Phone</th>
+          <th>Ticket No</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  </div>
+  <div class="ftr">
+    <div class="ftr-left">BUTEX Transport Office &bull; Campus Transit System</div>
+    <div class="ftr-right">Official Manifest</div>
+  </div>
+</div>
+</body>
+</html>`;
+
+      const oldFrame = document.getElementById('manifestPrintFrame');
+      if (oldFrame) oldFrame.remove();
+      const frame = document.createElement('iframe');
+      frame.id = 'manifestPrintFrame';
+      frame.style.position = 'fixed';
+      frame.style.right = '0';
+      frame.style.bottom = '0';
+      frame.style.width = '0';
+      frame.style.height = '0';
+      frame.style.border = '0';
+      frame.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(frame);
+
+      frame.onload = () => {
+        setTimeout(() => {
+          try {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+            showToast('Print dialog opened', 'success');
+          } catch (err) {
+            console.error(err);
+            showToast('Unable to open print dialog', 'error');
+          }
+        }, 500);
+      };
+
+      if ('srcdoc' in frame) {
+        frame.srcdoc = printHtml;
+      } else {
+        const frameDoc = frame.contentWindow.document;
+        frameDoc.open();
+        frameDoc.write(printHtml);
+        frameDoc.close();
+      }
+    };
+
+    window.addBatch = async () => {
+      const input = $('newBatchInput');
+      const val = input.value.trim();
+      if (!val) { showToast('Enter a batch number', 'error'); return; }
+      if (!state.batches) state.batches = [];
+      if (state.batches.includes(val)) { showToast('Batch already exists', 'error'); return; }
+      
+      const res = await supabaseClient.from('batches').insert([{ batch_number: val }]);
+      if (res.error) {
+        console.error('Add batch error:', res.error);
+        showToast('Error registering batch', 'error');
+        return;
+      }
+
+      state.batches.push(val);
+      renderAdmin();
+      populateTrips();
+      input.value = '';
+      showToast('Batch added', 'success');
+    };
+
+    window.removeBatch = (batch) => {
+      openModal({
+        title: 'Remove Batch?',
+        desc: `Are you sure you want to remove Batch ${batch}? This will affect future signups.`,
+        icon: 'layers-2',
+        color: 'rose',
+        confirmText: 'Remove',
+        callback: async () => {
+          const res = await supabaseClient.from('batches').delete().eq('batch_number', batch);
+          if (res.error) {
+            console.error('Remove batch error:', res.error);
+            showToast('Error removing batch', 'error');
+            return;
+          }
+
+          state.batches = (state.batches || []).filter(b => b !== batch);
+          renderAdmin(); populateTrips();
+          showToast('Batch removed');
+        }
+      });
+    };
+
+    function adminTripCard(trip) {
+      const date = tripDate(trip), booked = trip.booked || 0;
+      return `<div class="card flex items-center gap-3 p-3.5 group">
+        <div class="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[14px] bg-gradient-to-br from-teal-700 to-teal-900 text-white">
+          <span class="display text-[14px] font-extrabold leading-none">${date.getDate()}</span>
+          <span class="mt-0.5 text-[9px] font-extrabold leading-none opacity-90">${date.toLocaleDateString('en-GB', { month:'short' }).toUpperCase()}</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-[13px] font-extrabold text-slate-950">${trip.destination}</p>
+          <p class="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-600">
+            <i data-lucide="clock" class="h-3 w-3"></i>${timeLabel(date)}
+            <span class="text-slate-300">-</span>${booked}/${trip.seats} booked
+            <span class="text-slate-300">-</span>
+            <span class="font-extrabold ${trip.fare === 0 ? 'text-emerald-800' : 'text-slate-700'}">${trip.fare === 0 ? 'FREE' : 'BDT ' + trip.fare}</span>
+          </p>
+        </div>
+        <div class="flex shrink-0 items-center gap-1.5">
+          <button onclick="downloadTripManifest('${trip.id}')" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-sky-50 text-sky-600 ring-1 ring-sky-200" title="Download Trip Manifest">
+            <i data-lucide="file-text" class="h-4 w-4"></i>
+          </button>
+          <button onclick="deleteTrip('${trip.id}')" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-rose-50 text-rose-600 ring-1 ring-rose-200">
+            <i data-lucide="trash-2" class="h-4 w-4"></i>
+          </button>
+        </div>
+      </div>`;
+    }
+
+    function adminBookingCard(booking) {
+      const trip = state.trips.find(item => item.id === booking.tripId);
+      const time = timeLabel(new Date(booking.timestamp));
+      const phone = booking.phone || '';
+      return `
+      <div class="card flex items-center gap-3 p-3 group">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] bg-teal-800 text-[13px] font-extrabold text-white">
+          ${booking.studentName.charAt(0).toUpperCase()}
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-[13px] font-extrabold text-slate-950">
+            ${booking.studentName} 
+            <span class="font-mono text-[11px] font-normal text-slate-500">${booking.studentId}</span>
+          </p>
+          ${phone ? `<p class="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-teal-700"><i data-lucide="phone" class="h-3 w-3"></i>${phone}</p>` : ''}
+          <p class="mt-0.5 truncate text-[11px] text-slate-600">
+            ${trip ? trip.destination : '<span class="text-rose-600">Trip Deleted</span>'} - ${time}
+          </p>
+        </div>
+        <div class="flex shrink-0 flex-col gap-1">
+          ${phone ? `<a href="tel:${phone}" class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"><i data-lucide="phone" class="h-3.5 w-3.5"></i></a>` : ''}
+          <button onclick="deleteBooking('${booking.id}')" class="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+            <i data-lucide="x" class="h-3.5 w-3.5"></i>
+          </button>
+        </div>
+      </div>`;
+    }
+
+    async function addTrip() {
+      const date = $('newDate').value, time = $('newTime').value, destination = $('newDestination').value.trim();
+      const seats = parseInt($('newSeats').value) || 40, fare = parseInt($('newFare').value) || 0;
+      if (!date || !time || !destination) { showToast('Fill all trip fields', 'error'); return; }
+      
+      const trip = { id: 't' + Date.now(), date, time, destination, fare, seats, booked: 0 };
+      const res = await supabaseClient.from('trips').insert([trip]);
+      if (res.error) {
+        console.error('Add trip error:', res.error);
+        showToast('Error scheduling departure', 'error');
+        return;
+      }
+
+      state.trips.push(trip);
+      renderAdmin(); renderTrips(); populateTrips();
+      $('newDestination').value = ''; $('newSeats').value = '40';
+      showToast('Departure added', 'success');
+    }
+
+    // Modal Logic
+    let modalCallback = null;
+    function openModal({ title, desc, icon, color, confirmText, callback }) {
+      $('modalTitle').textContent = title;
+      $('modalDesc').textContent = desc;
+      $('modalConfirmBtn').textContent = confirmText || 'Confirm';
+      
+      const iconEl = $('modalIcon');
+      iconEl.setAttribute('data-lucide', icon || 'alert-triangle');
+      
+      const container = $('modalIconContainer');
+      container.className = "mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl " + (color === 'rose' ? 'bg-rose-500 shadow-rose-200' : 'bg-teal-600 shadow-teal-200');
+      $('modalConfirmBtn').className = "flex w-full items-center justify-center rounded-2xl py-4 text-sm font-black text-white shadow-lg transition-transform active:scale-95 " + (color === 'rose' ? 'bg-rose-500 shadow-rose-500/30' : 'bg-teal-600 shadow-teal-600/30');
+      
+      modalCallback = callback;
+      $('customModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      $('customModal').classList.add('hidden');
+      modalCallback = null;
+    }
+
+    $('modalConfirmBtn').addEventListener('click', () => {
+      if (modalCallback) modalCallback();
+      closeModal();
+    });
+    $('modalCancelBtn').addEventListener('click', closeModal);
+
+    window.deleteTrip = id => {
+      openModal({
+        title: 'Delete Departure?',
+        desc: 'This will permanently remove this bus schedule.',
+        icon: 'trash-2',
+        color: 'rose',
+        confirmText: 'Delete Now',
+        callback: async () => {
+          const res = await supabaseClient.from('trips').delete().eq('id', id);
+          if (res.error) {
+            console.error('Delete trip error:', res.error);
+            showToast('Error deleting departure', 'error');
+            return;
+          }
+          state.trips = state.trips.filter(trip => trip.id !== id);
+          renderAdmin(); renderTrips(); populateTrips();
+          showToast('Departure deleted');
+        }
+      });
+    };
+
+    window.deleteBooking = (bookingId) => {
+      openModal({
+        title: 'Cancel Reservation?',
+        desc: 'Are you sure you want to cancel this student\'s seat?',
+        icon: 'user-minus',
+        color: 'rose',
+        confirmText: 'Cancel Seat',
+        callback: async () => {
+          const b = state.bookings.find(x => x.id === bookingId);
+          if (b) {
+            const trip = state.trips.find(t => t.id === b.tripId);
+            const newCount = trip ? Math.max(0, (trip.booked || 0) - 1) : 0;
+            
+            const promises = [supabaseClient.from('bookings').delete().eq('id', bookingId)];
+            if (trip) {
+              promises.push(supabaseClient.from('trips').update({ booked: newCount }).eq('id', trip.id));
+            }
+            
+            const results = await Promise.all(promises);
+            if (results.some(r => r.error)) {
+              console.error('Delete booking error:', results);
+              showToast('Error cancelling reservation', 'error');
+              return;
+            }
+
+            if (trip) trip.booked = newCount;
+            state.bookings = state.bookings.filter(x => x.id !== bookingId);
+            renderAdmin(); renderTrips(); showToast('Booking cancelled');
+          }
+        }
+      });
+    };
+
+    window.cancelMyTicket = (bookingId) => {
+      openModal({
+        title: 'Cancel Ticket?',
+        desc: 'Do you really want to cancel your seat?',
+        icon: 'ticket-x',
+        color: 'rose',
+        confirmText: 'Yes, Cancel it',
+        callback: async () => {
+          const b = state.bookings.find(x => x.id === bookingId);
+          if (!b) return;
+          const trip = state.trips.find(t => t.id === b.tripId);
+          const newCount = trip ? Math.max(0, (trip.booked || 0) - 1) : 0;
+          
+          const promises = [supabaseClient.from('bookings').delete().eq('id', bookingId)];
+          if (trip) {
+            promises.push(supabaseClient.from('trips').update({ booked: newCount }).eq('id', trip.id));
+          }
+          
+          const results = await Promise.all(promises);
+          if (results.some(r => r.error)) {
+            console.error('Cancel ticket error:', results);
+            showToast('Error cancelling ticket', 'error');
+            return;
+          }
+
+          if (trip) trip.booked = newCount;
+          state.bookings = state.bookings.filter(x => x.id !== bookingId);
+          renderMyTickets(); renderTrips();
+          showToast('Ticket cancelled', 'success');
+        }
+      });
+    };
+
+
+
+    window.clearPastTrips = () => {
+      openModal({
+        title: 'Clean History?',
+        desc: 'This will remove all bus schedules from past dates.',
+        icon: 'trash-2',
+        color: 'rose',
+        confirmText: 'Clean Now',
+        callback: async () => {
+          const today = new Date().toISOString().split('T')[0];
+          const res = await supabaseClient.from('trips').delete().lt('date', today);
+          if (res.error) {
+            console.error('Clean history error:', res.error);
+            showToast('Error cleaning trip history', 'error');
+            return;
+          }
+          state.trips = state.trips.filter(t => t.date >= today);
+          renderAdmin(); renderTrips(); showToast('History cleaned');
+        }
+      });
+    };
+
+    window.resetSystem = () => {
+      openModal({
+        title: 'Hard Reset?',
+        desc: 'WARNING: This will delete ALL data permanently.',
+        icon: 'refresh-cw',
+        color: 'rose',
+        confirmText: 'Reset Everything',
+        callback: () => {
+          localStorage.removeItem('butexTransitEnglish');
+          localStorage.removeItem('butexSession');
+          location.reload();
+        }
+      });
+    };
+
+    window.handleLogout = () => {
+      openModal({
+        title: 'Sign Out?',
+        desc: 'Are you sure you want to log out of your BUTEX account?',
+        icon: 'log-out',
+        color: 'rose',
+        confirmText: 'Sign Out',
+        callback: () => {
+          state.currentUser = null;
+          localStorage.removeItem('butexSession');
+          // Reset internal forms
+          $('loginId').value = '';
+          $('loginPass').value = '';
+          if ($('signupForm')) $('signupForm').reset();
+          
+          showAuth();
+          showToast('Signed out successfully');
+        }
+      });
+    };
+
+    window.logoutUser = () => handleLogout();
+
+    let toastTimer;
+    function showToast(message, type = 'success') {
+      const iconMap = { success: 'check', error: 'x', info: 'info' };
+      const colorMap = { success: 'bg-emerald-600', error: 'bg-rose-600', info: 'bg-sky-600' };
+      $('toastMsg').textContent = message;
+      const icon = $('toastIcon');
+      icon.className = `flex h-7 w-7 items-center justify-center rounded-lg ${colorMap[type] || colorMap.success}`;
+      icon.innerHTML = `<i data-lucide="${iconMap[type] || 'check'}" class="h-4 w-4 text-white"></i>`;
+      lucide.createIcons();
+      const toast = $('toast');
+      toast.classList.remove('opacity-0', '-translate-y-2', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.classList.add('opacity-0', '-translate-y-2', 'pointer-events-none'); toast.classList.remove('opacity-100', 'translate-y-0'); }, 2200);
+    }
+
+    // ============ AUTH FUNCTIONS ============
+    window.switchAuthTab = (tab) => {
+      $all('.auth-tab').forEach(t => t.classList.remove('active'));
+      if (tab === 'login') {
+        $all('.auth-tab')[0].classList.add('active');
+        $('loginForm').classList.remove('hidden');
+        $('signupForm').classList.add('hidden');
+      } else {
+        $all('.auth-tab')[1].classList.add('active');
+        $('loginForm').classList.add('hidden');
+        $('signupForm').classList.remove('hidden');
+      }
+    };
+
+    window.togglePw = (inputId, btn) => {
+      const inp = $(inputId);
+      if (inp.type === 'password') { inp.type = 'text'; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'; }
+      else { inp.type = 'password'; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'; }
+    };
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const id = $('loginId').value.trim();
+      const pass = $('loginPass').value;
+      if (!id || !pass) { showToast('Fill all fields', 'error'); return; }
+      const user = state.users.find(u => u.id === id && u.password === pass);
+      if (!user) { showToast('Invalid Student ID or Password', 'error'); return; }
+      state.currentUser = user;
+      localStorage.setItem('butexSession', user.id);
+      showToast('Welcome, ' + user.name, 'success');
+      showApp();
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      const name = $('signupName').value.trim();
+      const id = $('signupId').value.trim();
+      const batch = $('signupBatch').value;
+      const dept = $('signupDept').value;
+      const phone = $('signupPhone').value.trim();
+      const email = $('signupEmail').value.trim();
+      const pass = $('signupPass').value;
+      if (!name || !id || !batch || !dept || !phone || !email || !pass) { showToast('Fill all fields', 'error'); return; }
+      if (state.users.find(u => u.id === id)) { showToast('Student ID already registered', 'error'); return; }
+      if (pass.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+      const user = { name, id, batch, dept, phone, email, password: pass, role: 'general' };
+      
+      const res = await supabaseClient.from('users').insert([user]);
+      if (res.error) {
+        console.error('Signup error:', res.error);
+        showToast(res.error.message || 'Error creating account', 'error');
+        return;
+      }
+
+      state.users.push(user);
+      state.currentUser = user;
+      localStorage.setItem('butexSession', user.id);
+      
+      // Cleanup signup form
+      $('signupName').value = '';
+      $('signupId').value = '';
+      $('signupPhone').value = '';
+      $('signupEmail').value = '';
+      $('signupPass').value = '';
+      
+      showToast('Account created! Welcome, ' + name, 'success');
+      showApp();
+    }
+
+    function autoFillBooking() { fillBookingCard(); }
+
+    function fillBookingCard() {
+      const u = state.currentUser;
+      if (!u) return;
+      // Fill hidden inputs
+      $('studentName').value = u.name || '';
+      $('studentId').value   = u.id   || '';
+      $('studentPhone').value = u.phone || '';
+      $('studentDept').value  = u.dept  || '';
+      $('studentBatch').value = u.batch || '';
+      // Render read-only card
+      const card = $('bookPassengerCard');
+      if (!card) return;
+      card.innerHTML = `
+        <div class="flex items-center gap-3 mb-3">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-600 to-cyan-600 text-white text-[18px] font-extrabold shadow-sm">${u.name.charAt(0).toUpperCase()}</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[15px] font-extrabold text-slate-900 leading-tight">${u.name}</p>
+            <p class="text-[12px] font-semibold text-slate-500 mt-0.5">${u.dept} &bull; Batch ${u.batch}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200">
+            <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Student ID</p>
+            <p class="text-[12px] font-extrabold text-slate-900 font-mono mt-0.5">${u.id}</p>
+          </div>
+          <div class="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200">
+            <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Phone</p>
+            <p class="text-[12px] font-extrabold text-slate-900 mt-0.5">${u.phone}</p>
+          </div>
+        </div>`;
+    }
+
+    function renderProfile() {
+      const u = state.currentUser;
+      if (!u) return;
+      const myBookings = state.bookings.filter(b => b.studentId === u.id);
+      $('profileContent').innerHTML = `
+      <div class="profile-card card overflow-hidden mb-5">
+        <div class="profile-hdr">
+          <div class="profile-avatar">${u.name.charAt(0).toUpperCase()}</div>
+          <div style="font-size:18px;font-weight:900;letter-spacing:-0.5px;">${u.name}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:4px;font-weight:600;">${u.dept} &bull; Batch ${u.batch}</div>
+        </div>
+        <div class="space-y-0 p-0">
+          <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+            <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center"><i data-lucide="hash" class="w-4 h-4 text-teal-700"></i></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Student ID</p>
+              <p class="text-[14px] font-bold text-slate-900 font-mono">${u.id}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+            <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center"><i data-lucide="mail" class="w-4 h-4 text-amber-700"></i></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email</p>
+              <p class="text-[14px] font-bold text-slate-900">${u.email}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+            <div class="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center"><i data-lucide="phone" class="w-4 h-4 text-sky-700"></i></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phone</p>
+              <p class="text-[14px] font-bold text-slate-900">${u.phone}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 px-4 py-3">
+            <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center"><i data-lucide="ticket" class="w-4 h-4 text-violet-700"></i></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Bookings</p>
+              <p class="text-[14px] font-bold text-slate-900">${myBookings.length} trips</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card overflow-hidden mb-5">
+        <div class="flex items-center gap-2.5 border-b border-teal-100 bg-teal-50 px-4 py-3">
+          <div class="w-7 h-7 rounded-lg bg-teal-800 flex items-center justify-center"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-white"></i></div>
+          <p class="text-[12px] font-extrabold text-slate-800">Quick Actions</p>
+        </div>
+        <div class="p-3 space-y-2">
+          <button onclick="switchView('book')" class="flex w-full items-center gap-3 p-3 rounded-xl bg-teal-50 ring-1 ring-teal-100 text-left">
+            <div class="w-8 h-8 rounded-lg bg-teal-700 flex items-center justify-center"><i data-lucide="ticket" class="w-4 h-4 text-white"></i></div>
+            <div class="flex-1"><p class="text-[13px] font-bold text-slate-900">Book a Trip</p><p class="text-[11px] text-slate-500">Reserve your boarding pass</p></div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+          </button>
+          <button onclick="switchView('tickets')" class="flex w-full items-center gap-3 p-3 rounded-xl bg-amber-50 ring-1 ring-amber-100 text-left">
+            <div class="w-8 h-8 rounded-lg bg-amber-700 flex items-center justify-center"><i data-lucide="wallet" class="w-4 h-4 text-white"></i></div>
+            <div class="flex-1"><p class="text-[13px] font-bold text-slate-900">My Tickets</p><p class="text-[11px] text-slate-500">View and download passes</p></div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+          </button>
+        </div>
+      </div>
+
+      <button onclick="handleLogout()" class="flex w-full items-center justify-center gap-2 py-3.5 rounded-xl bg-rose-50 ring-1 ring-rose-200 text-rose-700 font-bold text-[13px]">
+        <i data-lucide="log-out" class="w-4 h-4"></i>
+        Sign Out
+      </button>
+      `;
+      lucide.createIcons();
+    }
+
+
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
