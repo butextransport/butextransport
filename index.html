@@ -5,17 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0f766e">
   <title>BUTEX Transit - Bus Ticket Management</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-  <link rel="preconnect" href="https://ipkbhecttxlqyadxwchy.supabase.co" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" defer></script>
-  <script src="https://unpkg.com/lucide@latest" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    if (typeof supabase === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>');
+    }
+  </script>
 
   <style>
     * { font-family: Inter, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -661,15 +662,18 @@
   </div>
 
   <script>
+    lucide.createIcons();
+
     const supabaseUrl = 'https://ipkbhecttxlqyadxwchy.supabase.co';
     const supabaseKey = 'sb_publishable_gJRL9AIr6p2wx-3S7bnWEw_msVWbL3g';
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+    let supabaseClient;
 
     const state = { trips: [], bookings: [], batches: [], users: [], currentUser: null, currentView: 'home', admin: false, lastBooking: null, filter: 'all' };
     const $ = id => document.getElementById(id);
     const $all = selector => Array.from(document.querySelectorAll(selector));
 
     function init() {
+      supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
       loadData();
     }
 
@@ -2176,11 +2180,7 @@
 
 
 
-    function waitForLibs(cb) {
-      if (window.lucide && window.supabase && window.QRious) return cb();
-      setTimeout(() => waitForLibs(cb), 30);
-    }
-    document.addEventListener('DOMContentLoaded', () => waitForLibs(init));
+    document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
