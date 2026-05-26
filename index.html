@@ -543,8 +543,10 @@
                 <div><label class="text-[11px] font-extrabold text-slate-700">Date</label><input id="newDate" type="date" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
                 <div><label class="text-[11px] font-extrabold text-slate-700">Time</label><input id="newTime" type="time" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
               </div>
-              <div><label class="text-[11px] font-extrabold text-slate-700">Departure</label><input id="newDeparture" placeholder="e.g. BUTEX Campus" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
-              <div><label class="text-[11px] font-extrabold text-slate-700">Destination</label><input id="newDestination" placeholder="e.g. Mirpur 10" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-[11px] font-extrabold text-slate-700">Departure</label><input id="newDeparture" placeholder="BUTEX Campus" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
+                <div><label class="text-[11px] font-extrabold text-slate-700">Destination</label><input id="newDestination" placeholder="e.g. Mirpur 10 - Campus Shuttle" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-[13px] font-medium"></div>
+              </div>
               <div class="grid grid-cols-2 gap-3">
                 <div><label class="text-[11px] font-extrabold text-slate-700">Seats</label><input id="newSeats" type="number" value="40" min="1" max="60" class="field mt-1.5 w-full rounded-xl px-3 py-[11px] text-center text-[13px] font-extrabold"></div>
                 <div><label class="text-[11px] font-extrabold text-slate-700">Fare</label><div class="select-wrapper mt-1.5"><select id="newFare" class="field w-full rounded-xl px-3 py-[11px] text-[13px] font-extrabold"><option value="0">FREE</option><option value="30">BDT 30</option><option value="50">BDT 50</option></select></div></div>
@@ -862,7 +864,7 @@
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
                   <h3 class="display text-[16px] font-extrabold leading-tight text-slate-950">${trip.destination}</h3>
-                  <p class="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-slate-500"><i data-lucide="map-pin" class="h-3 w-3"></i>From ${trip.departure || 'BUTEX'}</p>
+                  <div class="mt-0.5 text-[11px] font-bold text-slate-500"><i data-lucide="map-pin" class="h-3 w-3 inline-block"></i> ${trip.departure || 'BUTEX Campus'}</div>
                   <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <span class="inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-extrabold text-slate-700 ring-1 ring-slate-200"><i data-lucide="clock" class="h-3 w-3 text-slate-500"></i>${timeLabel(date)}</span>
                     ${today ? '<span class="inline-flex items-center gap-1 rounded-lg bg-teal-50 px-2 py-1 text-[10px] font-extrabold text-teal-800 ring-1 ring-teal-200"><span class="h-1.5 w-1.5 rounded-full bg-teal-700"></span>Today</span>' : ''}
@@ -891,8 +893,8 @@
       $('tripSelect').innerHTML = '<option value="">Choose your trip...</option>' + available.map(trip => {
         const date = tripDate(trip);
         const remaining = trip.seats - (trip.booked || 0);
-        const route = (trip.departure || 'BUTEX') + ' → ' + trip.destination;
-        return `<option value="${trip.id}">${shortDate(date)} - ${timeLabel(date)} - ${route} (${remaining} seats)</option>`;
+        const from = trip.departure || 'BUTEX';
+        return `<option value="${trip.id}">${shortDate(date)} - ${timeLabel(date)} - ${from} to ${trip.destination} (${remaining} seats)</option>`;
       }).join('');
 
       const batches = [...(state.batches || [])].sort((a, b) => parseInt(a) - parseInt(b));
@@ -1169,8 +1171,8 @@
     <div class="hero-band">
       <div class="terminal from">
         <div class="lbl">From</div>
-        <div class="value" style="font-size:${(t.departure || 'BUTEX').length > 24 ? '14px' : '18px'}">${safe(t.departure || 'BUTEX')}</div>
-        <div class="det">Bus Departure Point</div>
+        <div class="value">${safe(t.departure || 'BUTEX')}</div>
+        <div class="det">Tejgaon, Dhaka-1208</div>
       </div>
       <div class="direction">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -1332,7 +1334,7 @@
 
     function ticketCard(booking, isPast) {
       const trip = state.trips.find(item => item.id === booking.tripId);
-      const dest = trip ? ((trip.departure || 'BUTEX') + ' → ' + trip.destination) : 'Trip Removed';
+      const dest = trip ? trip.destination : 'Trip Removed';
       const dt = trip ? tripDate(trip) : null;
       const dateStr = dt ? dt.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }) + ' - ' + timeLabel(dt) : 'N/A';
       const fare = trip ? (trip.fare === 0 ? 'FREE' : 'BDT ' + trip.fare) : '-';
@@ -1421,7 +1423,7 @@
       // Populate route filter dropdown (preserve current selection)
       const routeSelect = $('adminFilterRoute');
       const currentRoute = routeSelect.value;
-      const uniqueRoutes = [...new Set(state.trips.map(t => t.destination))].sort();
+      const uniqueRoutes = [...new Set(state.trips.map(t => `${t.departure || 'BUTEX'} → ${t.destination}`))].sort();
       routeSelect.innerHTML = '<option value="">All Routes</option>' + 
         uniqueRoutes.map(r => `<option value="${r}" ${r === currentRoute ? 'selected' : ''}>${r}</option>`).join('');
 
@@ -1449,7 +1451,8 @@
       if (filterRoute) {
         filteredBookings = filteredBookings.filter(b => {
           const trip = state.trips.find(t => t.id === b.tripId);
-          return trip && trip.destination === filterRoute;
+          const routeStr = `${trip?.departure || 'BUTEX'} → ${trip?.destination}`;
+          return routeStr === filterRoute;
         });
       }
 
@@ -1627,7 +1630,7 @@
       </div>
     </div>
     <div class="hdr-meta">
-      <div class="hdr-meta-item"><span class="m-dot"></span>${safe(trip.departure || 'BUTEX')} → ${safe(trip.destination)}</div>
+      <div class="hdr-meta-item"><span class="m-dot"></span>${safe(trip.destination)}</div>
       <div class="hdr-meta-item"><span class="m-dot"></span>${safe(dt.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' }))}</div>
       <div class="hdr-meta-item"><span class="m-dot"></span>${safe(timeLabel(dt))}</div>
     </div>
@@ -1748,7 +1751,10 @@
           <span class="mt-0.5 text-[9px] font-extrabold leading-none opacity-90">${date.toLocaleDateString('en-GB', { month:'short' }).toUpperCase()}</span>
         </div>
         <div class="min-w-0 flex-1">
-          <p class="truncate text-[13px] font-extrabold text-slate-950">${trip.departure || 'BUTEX'} → ${trip.destination}</p>
+          <p class="truncate text-[13px] font-extrabold text-slate-950">${trip.destination}</p>
+          <p class="mt-0.5 truncate text-[10px] text-slate-500 font-semibold">
+            <i data-lucide="map-pin" class="h-3 w-3 inline"></i> From: ${trip.departure || 'BUTEX Campus'}
+          </p>
           <p class="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-600">
             <i data-lucide="clock" class="h-3 w-3"></i>${timeLabel(date)}
             <span class="text-slate-300">-</span>${booked}/${trip.seats} booked
@@ -1796,8 +1802,7 @@
     }
 
     async function addTrip() {
-      const date = $('newDate').value, time = $('newTime').value;
-      const departure = $('newDeparture').value.trim();
+      const date = $('newDate').value, time = $('newTime').value, departure = $('newDeparture').value.trim();
       const destination = $('newDestination').value.trim();
       const seats = parseInt($('newSeats').value) || 40, fare = parseInt($('newFare').value) || 0;
       if (!date || !time || !departure || !destination) { showToast('Fill all trip fields', 'error'); return; }
@@ -1806,7 +1811,7 @@
       const res = await supabaseClient.from('trips').insert([trip]);
       if (res.error) {
         console.error('Add trip error:', res.error);
-        showToast('Error scheduling trip', 'error');
+        showToast('Error scheduling departure', 'error');
         return;
       }
 
